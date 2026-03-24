@@ -9,14 +9,8 @@ variable "cloudflare_account_id" {
   type        = string
 }
 
-variable "bucket_name" {
-  description = "R2 bucket name"
-  type        = string
-  default     = "ivan-demo-r2-bucket"
-}
-
 variable "location_hint" {
   description = "Optional R2 location hint"
   type        = string
-  default     = "WEUR"
+  default     = "WEUR" # Western Europe
 }
