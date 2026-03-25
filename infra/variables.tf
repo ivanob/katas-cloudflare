@@ -9,6 +9,11 @@ variable "cloudflare_account_id" {
   type        = string
 }
 
+variable "zone_id" {
+  description = "Cloudflare zone ID for the domain"
+  type        = string
+}
+
 variable "location_hint" {
   description = "Optional R2 location hint"
   type        = string
