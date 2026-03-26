@@ -1,5 +1,5 @@
-#POST https://w1-images.ivan-obeso1.workers.dev/api/images
-POST http://localhost:8787/api/images
+POST https://w1-images.ivan-obeso1.workers.dev/api/images
+#POST http://localhost:8787/api/images
 Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
 
 ------WebKitFormBoundary
