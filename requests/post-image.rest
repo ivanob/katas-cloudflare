@@ -1,0 +1,7 @@
+POST https://w1-images.ivan-obeso1.workers.dev/api/images
+Content-Type: application/json
+
+{
+  "name": "my-image",
+  "url": "https://example.com/image.jpg"
+}
