@@ -1,7 +1,10 @@
-POST https://w1-images.ivan-obeso1.workers.dev/api/images
-Content-Type: application/json
+#POST https://w1-images.ivan-obeso1.workers.dev/api/images
+POST http://localhost:8787/api/images
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
 
-{
-  "name": "my-image",
-  "url": "https://example.com/image.jpg"
-}
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="image1.jpg"
+Content-Type: image/jpeg
+
+< ../samples-images/image1.jpg
+------WebKitFormBoundary--

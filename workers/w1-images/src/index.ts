@@ -19,6 +19,41 @@ export default {
 			return new Response("Received GET request for /images");
 		}
 		if (request.method === 'POST' && url.pathname === '/api/images') {
+			try {
+                // Parse the multipart form data
+                const formData = await request.formData();
+                
+                // Get the file from the "file" field
+                const file = formData.get('file') as File;
+                
+                if (!file) {
+                    return new Response('No file provided', { status: 400 });
+                }
+                
+                // Get file information
+                const fileName = file.name;
+                const fileSize = file.size;
+                const fileType = file.type;
+                
+                // Convert file to ArrayBuffer if needed
+                const fileBuffer = await file.arrayBuffer();
+                
+                // Do something with the file (store, process, etc.)
+                console.log(`Received file: ${fileName}, size: ${fileSize}, type: ${fileType}`);
+                
+                return new Response(JSON.stringify({
+                    success: true,
+                    fileName,
+                    fileSize,
+                    fileType,
+                    message: 'File uploaded successfully'
+                }), {
+                    headers: { 'Content-Type': 'application/json' },
+                    status: 200
+                });
+            } catch (error) {
+                return new Response(`Error: ${error.message}`, { status: 500 });
+            }
 			return new Response("Received POST request for /images");
 		}
 		if (request.method === 'DELETE' && url.pathname === '/api/images/:id') {
