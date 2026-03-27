@@ -17,14 +17,17 @@ type ImageDesc = {
 	size: number;
 	ImageType: string;
 	content: ArrayBuffer;
-}
+};
+
+class ErrorStoringData extends Error {}
+class ErrorInParameters extends Error {}
 
 const extractImage = async (request: Request): Promise<ImageDesc> => {
 	try {
 		const formData = await request.formData();
 		const file = formData.get('file') as File;
 		if (!file) {
-			throw new Error('No file uploaded');
+			throw new ErrorInParameters('No file uploaded');
 		}
 		// Get file information
 		const fileName = file.name;
@@ -36,12 +39,12 @@ const extractImage = async (request: Request): Promise<ImageDesc> => {
 			name: fileName,
 			size: fileSize,
 			ImageType: fileType,
-			content: fileBuffer
-		}
+			content: fileBuffer,
+		};
 	} catch (error: any) {
-		throw new Error(`Error extracting image: ${error.message}`);
+		throw new ErrorInParameters(`Error extracting image: ${error.message}`);
 	}
-}
+};
 
 const saveImageToR2 = async (image: ImageDesc, env: Env): Promise<void> => {
 	try {
@@ -55,57 +58,80 @@ const saveImageToR2 = async (image: ImageDesc, env: Env): Promise<void> => {
 			},
 		});
 	} catch (error: any) {
-		throw new Error(`Error saving image to R2: ${error.message}`);
+		throw new ErrorStoringData(`Error saving image to R2: ${error.message}`);
 	}
-}
+};
 
 const storeImageMetadataInD1 = async (image: ImageDesc, env: Env): Promise<void> => {
 	try {
-		await env.D1.prepare(
-			`INSERT INTO images (id, name, size, type) VALUES (?, ?, ?, ?)`
-		).bind(image.key, image.name, image.size, image.ImageType).run();
+		await env.D1.prepare(`INSERT INTO images (id, name, size, type) VALUES (?, ?, ?, ?)`)
+			.bind(image.key, image.name, image.size, image.ImageType)
+			.run();
 	} catch (error: any) {
-		throw new Error(`Error storing image metadata in D1: ${error.message}`);
+		throw new ErrorStoringData(`Error storing image metadata in D1: ${error.message}`);
 	}
-}
+};
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
-		const url = new URL(request.url);
-		if(url.pathname !== '/api/images'){
-			return new Response("Not found", { status: 404 });
-		}
-		switch(request.method){
-			case 'GET':
-				return new Response("Received GET request for /images");
-			case 'POST':
-				try{
-				const image = await extractImage(request);
-				const saveImagePromise = saveImageToR2(image, env);
-				const storeImageMetadataPromise = storeImageMetadataInD1(image, env);
-				await Promise.all([saveImagePromise, storeImageMetadataPromise]); // Concurrently save image and store metadata
-				console.log(`Received file: ${image.name}, size: ${image.size}, type: ${image.ImageType}`);
-				
-				return new Response(JSON.stringify({
-					message: 'File uploaded successfully'
-				}), {
-					headers: { 'Content-Type': 'application/json' },
-					status: 200
-				});
+		try {
+			const url = new URL(request.url);
+			if (url.pathname !== '/api/images') {
+				return new Response('Not found', { status: 404 });
 			}
-			catch (error: any) {
-				return new Response(JSON.stringify({
-					error: error.message
-				}), {
-					headers: { 'Content-Type': 'application/json' },
-					status: 400
-				});
+			switch (request.method) {
+				case 'GET':
+					return new Response('Received GET request for /images');
+				case 'POST':
+					try {
+						const image = await extractImage(request);
+						const saveImagePromise = saveImageToR2(image, env);
+						const storeImageMetadataPromise = storeImageMetadataInD1(image, env);
+						await Promise.all([saveImagePromise, storeImageMetadataPromise]); // Concurrently save image and store metadata
+						console.log(`Received file: ${image.name}, size: ${image.size}, type: ${image.ImageType}`);
+
+						return new Response(
+							JSON.stringify({
+								message: 'File uploaded successfully',
+							}),
+							{
+								headers: { 'Content-Type': 'application/json' },
+								status: 200,
+							},
+						);
+					} catch (error: any) {
+						return new Response(
+							JSON.stringify({
+								error: error.message,
+							}),
+							{
+								headers: { 'Content-Type': 'application/json' },
+								status: 400,
+							},
+						);
+					}
+				case 'DELETE':
+					return new Response('Method not allowed', { status: 405 });
+					break;
+				default:
+					return new Response('Method not allowed', { status: 405 });
 			}
-			case 'DELETE':
-				return new Response("Method not allowed", { status: 405 });	
-				break;
-			default:
-				return new Response("Method not allowed", { status: 405 });	
+		} catch (error: any) {
+			let codeError = 400;
+			if (error instanceof ErrorStoringData) {
+				codeError = 500;
+			}else if (error instanceof ErrorInParameters) {
+				codeError = 400;
+			}
+			return new Response(
+				JSON.stringify({
+					error: error.message,
+				}),
+				{
+					headers: { 'Content-Type': 'application/json' },
+					status: codeError,
+				},
+			);
 		}
 	},
 } satisfies ExportedHandler<Env>;
