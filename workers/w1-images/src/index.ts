@@ -59,6 +59,16 @@ const saveImageToR2 = async (image: ImageDesc, env: Env): Promise<void> => {
 	}
 }
 
+const storeImageMetadataInD1 = async (image: ImageDesc, env: Env): Promise<void> => {
+	try {
+		await env.D1.prepare(
+			`INSERT INTO images (id, name, size, type) VALUES (?, ?, ?, ?)`
+		).bind(image.key, image.name, image.size, image.ImageType).run();
+	} catch (error: any) {
+		throw new Error(`Error storing image metadata in D1: ${error.message}`);
+	}
+}
+
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const url = new URL(request.url);
@@ -71,7 +81,9 @@ export default {
 			case 'POST':
 				try{
 				const image = await extractImage(request);
-				await saveImageToR2(image, env);
+				const saveImagePromise = saveImageToR2(image, env);
+				const storeImageMetadataPromise = storeImageMetadataInD1(image, env);
+				await Promise.all([saveImagePromise, storeImageMetadataPromise]); // Concurrently save image and store metadata
 				console.log(`Received file: ${image.name}, size: ${image.size}, type: ${image.ImageType}`);
 				
 				return new Response(JSON.stringify({

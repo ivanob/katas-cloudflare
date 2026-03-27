@@ -15,11 +15,18 @@
 		"nodejs_compat"
 	],
 	"r2_buckets": [
-    {
-      "binding": "R2",
-      "bucket_name": "r2-images-bucket"
-    }
-  ]
+		{
+		"binding": "R2",
+		"bucket_name": "r2-images-bucket"
+		}
+  	],
+	"d1_databases": [
+		{
+		"binding": "D1",
+		"database_name": "images-db",
+		"database_id": "your-database-id-from-terraform-output"
+		}
+	]
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
