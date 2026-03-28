@@ -9,8 +9,9 @@ deploy:
 	terraform -chdir=$(TF_DIR) apply -var-file=variables.tfvars -auto-approve
 
 build-workers:
-
 	cd workers/w1-images && rm -rf ./dist && wrangler build && cd ../..
+	cd workers/w2-ai-text && rm -rf ./dist && wrangler build && cd ../..
 
 deploy-workers:
 	cd workers/w1-images && wrangler deploy && cd ../..
+	cd workers/w2-ai-text && wrangler deploy && cd ../..

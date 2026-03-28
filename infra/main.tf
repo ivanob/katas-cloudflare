@@ -6,6 +6,6 @@ resource "cloudflare_r2_bucket" "r2_bucket" {
 
 resource "cloudflare_d1_database" "d1_database" {
   account_id = var.cloudflare_account_id
-  name       = "images-db"
+  name       = "images"
 }
 

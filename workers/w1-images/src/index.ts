@@ -11,6 +11,12 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
+export interface Env {
+  AI_API: Fetcher,
+  R2: R2Bucket
+}
+
+
 type ImageDesc = {
 	key: string;
 	name: string;
@@ -21,8 +27,9 @@ type ImageDesc = {
 
 class ErrorStoringData extends Error {}
 class ErrorInParameters extends Error {}
+class InternalError extends Error {}
 
-const extractImage = async (request: Request): Promise<ImageDesc> => {
+const extractImageDataFromRequest = async (request: Request): Promise<ImageDesc> => {
 	try {
 		const formData = await request.formData();
 		const file = formData.get('file') as File;
@@ -62,15 +69,19 @@ const saveImageToR2 = async (image: ImageDesc, env: Env): Promise<void> => {
 	}
 };
 
-const storeImageMetadataInD1 = async (image: ImageDesc, env: Env): Promise<void> => {
-	try {
-		await env.D1.prepare(`INSERT INTO images (id, name, size, type) VALUES (?, ?, ?, ?)`)
-			.bind(image.key, image.name, image.size, image.ImageType)
-			.run();
-	} catch (error: any) {
-		throw new ErrorStoringData(`Error storing image metadata in D1: ${error.message}`);
+const callAIService = async (env: Env, imageKey: string): Promise<Response> => {
+	try{
+		const payload = {imageKey};
+		const response = await env.AI_API.fetch("https://internal/process", {
+			method: "POST",
+			body: JSON.stringify(payload),
+			headers: {"content-type": "application/json"}
+		});
+		return response;
+	}catch(error){
+		throw new InternalError("Error processing AI model: " + (error as Error).message);
 	}
-};
+}
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
@@ -84,10 +95,14 @@ export default {
 					return new Response('Received GET request for /images');
 				case 'POST':
 					try {
-						const image = await extractImage(request);
-						const saveImagePromise = saveImageToR2(image, env);
-						const storeImageMetadataPromise = storeImageMetadataInD1(image, env);
-						await Promise.all([saveImagePromise, storeImageMetadataPromise]); // Concurrently save image and store metadata
+						const image = await extractImageDataFromRequest(request);
+						const saveImagePromise = saveImageToR2(image, env).then(() => {
+							return callAIService(env, image.key);
+						});
+						await saveImagePromise;
+						// const storeImageMetadataPromise = storeImageMetadataInD1(image, env);
+						// await Promise.all([saveImagePromise, storeImageMetadataPromise]); // Concurrently save image and store metadata
+						
 						console.log(`Received file: ${image.name}, size: ${image.size}, type: ${image.ImageType}`);
 
 						return new Response(
@@ -122,6 +137,8 @@ export default {
 				codeError = 500;
 			}else if (error instanceof ErrorInParameters) {
 				codeError = 400;
+			}else if (error instanceof InternalError) {
+				codeError = 500;
 			}
 			return new Response(
 				JSON.stringify({

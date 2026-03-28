@@ -4,7 +4,7 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "w1-images",
+	"name": "w2-ai-text",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-03-10",
 	"observability": {
@@ -14,18 +14,22 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
+	"ai": {
+		"binding": "AI"
+	},
+	"d1_databases": [
+		{
+		"binding": "D1",
+		"database_name": "images",
+		"database_id": "bbbbb573-bc0a-46b9-85f9-2c489026ac29"
+		}
+	],
 	"r2_buckets": [
 		{
 		"binding": "R2",
 		"bucket_name": "r2-images-bucket"
 		}
   	],
-	"services": [
-		{
-		"binding": "AI_API",
-		"service": "w2-ai-text"
-		}
-	]
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
