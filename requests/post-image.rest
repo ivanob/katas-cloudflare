@@ -3,8 +3,8 @@ POST https://w1-images.ivan-obeso1.workers.dev/api/images
 Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
 
 ------WebKitFormBoundary
-Content-Disposition: form-data; name="file"; filename="image1.jpg"
+Content-Disposition: form-data; name="file"; filename="image2.jpg"
 Content-Type: image/jpeg
 
-< ../samples-images/image1.jpg
+< ../samples-images/image2.jpg
 ------WebKitFormBoundary--

@@ -29,6 +29,13 @@ class ErrorStoringData extends Error {}
 class ErrorInParameters extends Error {}
 class InternalError extends Error {}
 
+async function sha256Hex(data: ArrayBuffer): Promise<string> {
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(hash)]
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 const extractImageDataFromRequest = async (request: Request): Promise<ImageDesc> => {
 	try {
 		const formData = await request.formData();
@@ -41,8 +48,9 @@ const extractImageDataFromRequest = async (request: Request): Promise<ImageDesc>
 		const fileSize = file.size;
 		const fileType = file.type;
 		const fileBuffer = await file.arrayBuffer();
+		const fileHash = await sha256Hex(fileBuffer);
 		return {
-			key: crypto.randomUUID(),
+			key: fileHash,
 			name: fileName,
 			size: fileSize,
 			ImageType: fileType,
@@ -50,6 +58,14 @@ const extractImageDataFromRequest = async (request: Request): Promise<ImageDesc>
 		};
 	} catch (error: any) {
 		throw new ErrorInParameters(`Error extracting image: ${error.message}`);
+	}
+};
+
+const readImageFromR2 = async (imageKey: string, env: Env): Promise<R2ObjectBody | null> => {
+	try {
+		return env.R2.get(imageKey);
+	} catch (error: any) {
+		throw new ErrorStoringData(`Error reading image from R2: ${error.message}`);
 	}
 };
 
@@ -92,7 +108,14 @@ export default {
 			}
 			switch (request.method) {
 				case 'GET':
-					return new Response('Received GET request for /images');
+					const imageKey = url.searchParams.get('imageKey') || ' ';
+					console.log(`Received request for image key: ${imageKey}`);
+					const image: R2ObjectBody | null = await readImageFromR2(imageKey, env);
+					console.log(image);
+					if (!image) {
+						return new Response('Image not found', { status: 404 });
+					}
+					return new Response(await image.arrayBuffer());
 				case 'POST':
 					try {
 						const image = await extractImageDataFromRequest(request);
