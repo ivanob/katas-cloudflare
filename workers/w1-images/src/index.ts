@@ -14,6 +14,7 @@
 export interface Env {
 	AI_API: Fetcher;
 	R2: R2Bucket;
+	W3_ADMIN: Fetcher;
 }
 
 type ImageDesc = {
@@ -129,9 +130,11 @@ export default {
 						const saveImagePromise = saveImageToR2(image, env).then(() => {
 							return callAIService(env, image.key);
 						});
-						await saveImagePromise;
 						console.log(`Received file: ${image.name}, size: ${image.size}, type: ${image.ImageType}`);
-
+						const notifyCachePurgePromise = env.W3_ADMIN.fetch(new Request('https://internal/api/audit', { 
+							method: 'PURGE' // or whatever method you want
+						}));
+						await Promise.all([saveImagePromise, notifyCachePurgePromise]);
 						return new Response(
 							JSON.stringify({
 								message: 'File uploaded successfully',

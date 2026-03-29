@@ -24,6 +24,10 @@
 		{
 		"binding": "AI_API",
 		"service": "w2-ai-text"
+		},
+		{
+		"binding": "W3_ADMIN",
+		"service": "w3-admin"
 		}
 	]
 	/**

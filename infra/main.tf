@@ -9,3 +9,8 @@ resource "cloudflare_d1_database" "d1_database" {
   name       = "images"
 }
 
+
+resource "cloudflare_workers_kv_namespace" "images_kv" {
+  account_id = var.cloudflare_account_id
+  title      = "images-namespace"
+}

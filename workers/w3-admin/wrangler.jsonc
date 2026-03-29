@@ -8,25 +8,24 @@
 	"main": "src/index.ts",
 	"compatibility_date": "2026-03-10",
 	"observability": {
-		"enabled": true
+		"enabled": true,
 	},
 	"upload_source_maps": true,
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
+	"compatibility_flags": ["nodejs_compat"],
 	"d1_databases": [
 		{
-		"binding": "D1",
-		"database_name": "images",
-		"database_id": "bbbbb573-bc0a-46b9-85f9-2c489026ac29"
-		}
+			"binding": "D1",
+			"database_name": "images",
+			"database_id": "bbbbb573-bc0a-46b9-85f9-2c489026ac29",
+		},
 	],
 	"r2_buckets": [
 		{
-		"binding": "R2",
-		"bucket_name": "r2-images-bucket"
-		}
-  	],
+			"binding": "R2",
+			"bucket_name": "r2-images-bucket",
+		},
+	],
+	"kv_namespaces": [{ "binding": "KV_NAMESPACE", "id": "2e69873045114d35aeb98686ed359fec" }],
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
