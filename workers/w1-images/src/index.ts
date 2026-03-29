@@ -12,10 +12,9 @@
  */
 
 export interface Env {
-  AI_API: Fetcher,
-  R2: R2Bucket
+	AI_API: Fetcher;
+	R2: R2Bucket;
 }
-
 
 type ImageDesc = {
 	key: string;
@@ -29,11 +28,11 @@ class ErrorStoringData extends Error {}
 class ErrorInParameters extends Error {}
 class InternalError extends Error {}
 
+const cache = caches.default;
+
 async function sha256Hex(data: ArrayBuffer): Promise<string> {
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return [...new Uint8Array(hash)]
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("");
+	const hash = await crypto.subtle.digest('SHA-256', data);
+	return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 const extractImageDataFromRequest = async (request: Request): Promise<ImageDesc> => {
@@ -74,7 +73,6 @@ const saveImageToR2 = async (image: ImageDesc, env: Env): Promise<void> => {
 		await env.R2.put(image.key, image.content, {
 			httpMetadata: {
 				contentType: image.ImageType,
-				contentLength: image.size,
 			},
 			customMetadata: {
 				name: image.name,
@@ -86,18 +84,18 @@ const saveImageToR2 = async (image: ImageDesc, env: Env): Promise<void> => {
 };
 
 const callAIService = async (env: Env, imageKey: string): Promise<Response> => {
-	try{
-		const payload = {imageKey};
-		const response = await env.AI_API.fetch("https://internal/process", {
-			method: "POST",
+	try {
+		const payload = { imageKey };
+		const response = await env.AI_API.fetch('https://internal/process', {
+			method: 'POST',
 			body: JSON.stringify(payload),
-			headers: {"content-type": "application/json"}
+			headers: { 'content-type': 'application/json' },
 		});
 		return response;
-	}catch(error){
-		throw new InternalError("Error processing AI model: " + (error as Error).message);
+	} catch (error) {
+		throw new InternalError('Error processing AI model: ' + (error as Error).message);
 	}
-}
+};
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
@@ -110,12 +108,21 @@ export default {
 				case 'GET':
 					const imageKey = url.searchParams.get('imageKey') || ' ';
 					console.log(`Received request for image key: ${imageKey}`);
+					const key = new Request(new URL(request.url).toString(), request);
+					const cachedResponse = await cache.match(key);
+					if (cachedResponse) {
+						console.log(`Cache hit for image key: ${imageKey}`);
+						return cachedResponse;
+					}else{
+						console.log(`Cache miss for image key: ${imageKey}`);
+					}
 					const image: R2ObjectBody | null = await readImageFromR2(imageKey, env);
-					console.log(image);
 					if (!image) {
 						return new Response('Image not found', { status: 404 });
 					}
-					return new Response(await image.arrayBuffer());
+					const res = new Response(await image.arrayBuffer());
+					await cache.put(key, res.clone());
+					return res;
 				case 'POST':
 					try {
 						const image = await extractImageDataFromRequest(request);
@@ -123,9 +130,6 @@ export default {
 							return callAIService(env, image.key);
 						});
 						await saveImagePromise;
-						// const storeImageMetadataPromise = storeImageMetadataInD1(image, env);
-						// await Promise.all([saveImagePromise, storeImageMetadataPromise]); // Concurrently save image and store metadata
-						
 						console.log(`Received file: ${image.name}, size: ${image.size}, type: ${image.ImageType}`);
 
 						return new Response(
@@ -148,9 +152,6 @@ export default {
 							},
 						);
 					}
-				case 'DELETE':
-					return new Response('Method not allowed', { status: 405 });
-					break;
 				default:
 					return new Response('Method not allowed', { status: 405 });
 			}
@@ -158,9 +159,9 @@ export default {
 			let codeError = 400;
 			if (error instanceof ErrorStoringData) {
 				codeError = 500;
-			}else if (error instanceof ErrorInParameters) {
+			} else if (error instanceof ErrorInParameters) {
 				codeError = 400;
-			}else if (error instanceof InternalError) {
+			} else if (error instanceof InternalError) {
 				codeError = 500;
 			}
 			return new Response(
