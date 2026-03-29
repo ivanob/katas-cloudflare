@@ -30,16 +30,22 @@ class ErrorStoringData extends Error {}
 const readAllR2Images = async (env: Env): Promise<ImageDesc[]> => {
 	try {
 		const listed = await env.R2.list();
-		return listed.objects.map((obj: R2Object) => {
-			console.log(JSON.stringify(obj))
-			return {
+		const images = listed.objects.map((obj: R2Object) => ({
 			key: obj.key,
-			name: obj.customMetadata?.name || '',
+			name: '',
 			size: obj.size,
-			imageType: obj.httpMetadata?.contentType || '',
+			imageType: '',
 			dateUpload: obj.uploaded
-		}
-	})
+		}));
+		return Promise.all(images.map(async (obj: ImageDesc) => {
+			const extendedParams = await env.R2.head(obj.key);
+			return {
+				...obj,
+				name: extendedParams?.customMetadata?.name || '',
+				imageType: extendedParams?.httpMetadata?.contentType || '',
+			}
+			
+		}));
 	} catch (error: any) {
 		throw new ErrorStoringData(`Error reading all images from R2: ${error.message}`);
 	}
@@ -50,7 +56,7 @@ const readAIDescriptionOfImage = async (env: Env, imageKey: string): Promise<str
 		return await env.D1
 		.prepare("SELECT description FROM images WHERE id = ? LIMIT 1")
 		.bind(imageKey)
-		.first() || "";
+		.first() || "No description available";
 	}catch(error: any){
 		throw new ErrorStoringData(`Error reading description of image ${imageKey} from D1: ${error.message}`);
 	}
@@ -68,7 +74,7 @@ export default {
 					const imagesUploaded = await readAllR2Images(env);
 					const imagesWithDesc = await Promise.all(imagesUploaded.map(async (image: ImageDesc) => ({
 						...image,
-						description: await readAIDescriptionOfImage(env, image.key)
+						description: (await readAIDescriptionOfImage(env, image.key))
 					})));
 					return new Response(JSON.stringify({images: imagesWithDesc}), { status: 200 });
 			}
