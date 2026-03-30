@@ -127,6 +127,9 @@ export default {
 				case 'POST':
 					try {
 						const image = await extractImageDataFromRequest(request);
+						if(image.size > 5 * 1024 * 1024){ // 5MB limit
+							throw new ErrorInParameters('File size exceeds the 5MB limit');
+						}
 						const saveImagePromise = saveImageToR2(image, env).then(() => {
 							return callAIService(env, image.key);
 						});
